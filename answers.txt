@@ -1,3 +1,13 @@
+1.不同主要在于:
+(1) C++ STL中的list是一个双向链表,其中每个节点都有前驱和后继指针.而cool的list是单向的,只能通过取tl的方式取后继
+(2)对于元素的插入,cool的list只支持使用list的构造器实现插入,且只能把元素插入到list的头部(作为head)，而C++ STL的
+list提供了多个成员函数以支持不同形式的插入操作,可以在list的头部插入,尾部插入,或者在特定的某个位置插入(使用push_front,
+push_back，insert等函数).
+(3)cool的list似乎不支持删除操作,而C++ STL的list支持多种模式的删除操作
+(4)cool的list只提供了三个相关函数,实现了打印,计算len以及对整个list 应用一个function三种功能。而且这三个函数不是
+list的成员函数.而C++ STL的list提供了非常多的相关函数以实现对List的各种操作，而且都是list的成员函数.除了插入和删除,
+还有reverse,sort等多种操作,功能要比cool的list强大得多.
+
 
 2.String table的意义主要在于:
 (1)编译器所要处理的string中有很多都是重复使用的高频string,

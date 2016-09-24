@@ -42,6 +42,10 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 
+int str_error_type=0;// 记录string中的error type
+
+int comment_type=0;//表示comment的类型(按以(*还是--开头区分),0是(*型,1是--型
+int num=0;//记录注释中共嵌套的(*个数
 %}
 
 %option noyywrap
@@ -49,7 +53,9 @@ extern YYSTYPE cool_yylval;
 
 
 %x comment
-%x str   /*define start conditions for string and comments */
+%x str   
+
+/* define start conditions for string and comments */
 
 
 
@@ -87,13 +93,27 @@ digit       [0-9]
 
 %%
 
-char string_buf[MAX_STR_CONST];
-char *string_buf_ptr;
+
 
  /*normal case(not string or comments) */
-INITIAL{
+<INITIAL>{
 
-{class} {return CLASS}
+
+\" {string_buf_ptr=string_buf;BEGIN(str);}
+
+  /* if string */
+
+"*)"   {yylval.error_msg="Unmatched *)";return ERROR;}
+
+  /* if *) ,error */
+
+--  {comment_type=1;BEGIN(comment);}
+
+"(*"   {comment_type=0;num=1;BEGIN(comment);}
+  /* 两种可能的注释开始情况 */
+
+
+{class} {return CLASS;}
 {else} {return ELSE;}
 {fi} {return FI;}
 {if} {return IF;}
@@ -112,7 +132,7 @@ INITIAL{
 {not} {return NOT;}
 {darrow} {return DARROW;}
 {LE} {return LE;}
-{assgin} {return ASSIGN;}
+{assign} {return ASSIGN;}
 <<EOF>> {return 0;}
  /*all the normal keywords */
 {false} {
@@ -129,19 +149,18 @@ return BOOL_CONST;
  /*white space&count lines */
 
 {int} {
-
 int n=atoi(yytext);
-inttable.add_int(n);
+yylval.symbol=inttable.add_int(n);
 return INT_CONST;
 }
 
 {typid} {
-idtable.add_string(yytext);
+yylval.symbol=idtable.add_string(yytext);
 return 	TYPEID;
 }
 
 {objid} {
-idtable.add_string(yytext);
+yylval.symbol=idtable.add_string(yytext);
 return OBJECTID;
 }
  /*int&id */
@@ -156,55 +175,95 @@ yylval.error_msg=yytext;
 return ERROR;
 }
  /*invalid chars -  */
-
-\" {string_buf_pyr= string_buf;BEGIN(str);}
-
---  {BEGIN(commment);}
-
-"(*"   {BEGIN(comment);}
-
 }
 
+<str>{
 
-
-str{
 \"  {
+*string_buf_ptr='\0';
 BEGIN(INITIAL);
-*string_buf_ptr='\0';}
+if(strlen(string_buf)>MAX_STR_CONST)
+str_error_type=3;
+switch(str_error_type){
+case 0:   yylval.symbol=stringtable.add_string(string_buf);  return(STR_CONST); break;
+case 1:  yylval.error_msg="EOF in string constant"; return ERROR; break;
+case 2:  yylval.error_msg="String contains null character"; return ERROR; break;
+case 3:  yylval.error_msg="String constant too long"; return ERROR; break;
+} /*结束情况 */
+}
+ 
 \n {
+curr_lineno++;
 yylval.error_msg="Unterminated string constant";
+BEGIN(INITIAL);
 return ERROR;
-}
+} //字符串里遇到\n直接报错,从下一行重新开始分析
+
 \0 {
-yylval.error_msg="String contains null character";
-return ERROR;
-}
+str_error_type=2;
+} //null character错误
 
 <<EOF>> {
-yylval.error_msg="EOF in string constant";
+str_error_type=1;
+} //eof错误
+
+\\n *string_buf_ptr++='\n';
+\\b *string_buf_ptr++='\b';
+\\t *string_buf_ptr++='\t';
+\\f *string_buf_ptr++='\f';
+ /*四种特殊转义字符 */
+\\[^nbtf] {
+*string_buf_ptr++=yytext[1];
+} 
+ /*一般转义字符 */
+[^\\\n\"]+ {
+char *yptr = yytext;
+while ( *yptr )
+{
+*string_buf_ptr++ = *yptr++;
+}
+}
+ /*其他情况 */
+
+}
+
+
+
+
+<comment>{
+\n {
+curr_lineno++;
+if(comment_type==1)
+{
+BEGIN(INITIAL);
+}
+}
+<<EOF>> {
+if(comment_type==1)
+BEGIN(INITIAL);
+else
+{
+yylval.error_msg="EOF in comment";
+BEGIN(INITIAL);
 return ERROR;
 }
 
-
-
-\\n *stromg_buf_ptr++='\n';
-\\b *stromg_buf_ptr++='\b';
-\\t *stromg_buf_ptr++='\t';
-\\f *stromg_buf_ptr++='\f';
-
-\\ {
-
-} /* delete "\" */
-
 }
 
+"(*" {
+num++;
+}
 
+"*)" {
+num--;
+if(comment_type==0)
+{if(!num)
+{BEGIN(INITIAL);}
+}
+}
 
+. {}
 
-comment{
-\n|<<EOF>> {BEGIN(INITIAL);}
-
-"*)" {BEGIN(INITIAL);}
 
 }
 

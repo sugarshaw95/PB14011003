@@ -99,7 +99,7 @@ digit       [0-9]
 <INITIAL>{
 
 
-\" {string_buf_ptr=string_buf;BEGIN(str);}
+\" {string_buf_ptr=string_buf;str_error_type=0;BEGIN(str);}
 
   /* if string */
 

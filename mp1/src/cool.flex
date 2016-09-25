@@ -95,20 +95,15 @@ digit       [0-9]
 
 
 
- /*normal case(not string or comments) */
+ /*INITIAL condition */
 <INITIAL>{
-
-
 \" {string_buf_ptr=string_buf;str_error_type=0;BEGIN(str);}
-
   /* if string */
 
 "*)"   {yylval.error_msg="Unmatched *)";return ERROR;}
-
   /* if *) ,error */
 
 --  {comment_type=1;BEGIN(comment);}
-
 "(*"   {comment_type=0;num=1;BEGIN(comment);}
   /* 两种可能的注释开始情况 */
 
@@ -135,6 +130,7 @@ digit       [0-9]
 {assign} {return ASSIGN;}
 <<EOF>> {return 0;}
  /*all the normal keywords */
+
 {false} {
 yylval.boolean=0;	
 return BOOL_CONST;
@@ -144,6 +140,7 @@ yylval.boolean=1;
 return BOOL_CONST;
 }
  /*bool type */
+
 \n	{curr_lineno++;}
 " "|\f|\r|\t|\v {}
  /*white space&count lines */
@@ -169,29 +166,33 @@ return(*yytext);
 }
  /*other signs like + - ... */
 
-
 . {
 yylval.error_msg=yytext;
 return ERROR;
 }
- /*invalid chars -  */
+ /*invalid chars,return error */
 }
 
-<str>{
 
-\"  {
+
+ /*str conditon,处理string */
+<str>{
+\"  { 
 *string_buf_ptr='\0';
 BEGIN(INITIAL);
 if(strlen(string_buf)>MAX_STR_CONST)
-str_error_type=3;
+str_error_type=2;
 switch(str_error_type){
 case 0:   yylval.symbol=stringtable.add_string(string_buf);  return(STR_CONST); break;
-case 1:  yylval.error_msg="EOF in string constant"; return ERROR; break;
-case 2:  yylval.error_msg="String contains null character"; return ERROR; break;
-case 3:  yylval.error_msg="String constant too long"; return ERROR; break;
+case 1:  yylval.error_msg="String contains null character"; return ERROR; break;
+case 2:  yylval.error_msg="String constant too long"; return ERROR; break;
 } /*结束情况 */
 }
- 
+
+\\\n {curr_lineno++;*string_buf_ptr++='\n';}
+
+
+          
 \n {
 curr_lineno++;
 yylval.error_msg="Unterminated string constant";
@@ -199,19 +200,26 @@ BEGIN(INITIAL);
 return ERROR;
 } //字符串里遇到\n直接报错,从下一行重新开始分析
 
-\0 {
-str_error_type=2;
-} //null character错误
-
-<<EOF>> {
-str_error_type=1;
-} //eof错误
-
 \\n *string_buf_ptr++='\n';
 \\b *string_buf_ptr++='\b';
 \\t *string_buf_ptr++='\t';
 \\f *string_buf_ptr++='\f';
  /*四种特殊转义字符 */
+
+
+
+\0 {
+str_error_type=1;
+} //null character错误
+
+<<EOF>> {
+BEGIN(INITIAL);
+yylval.error_msg="EOF in string constant"; 
+return ERROR;
+
+} //eof错误
+
+
 \\[^nbtf] {
 *string_buf_ptr++=yytext[1];
 } 
@@ -223,13 +231,12 @@ while ( *yptr )
 *string_buf_ptr++ = *yptr++;
 }
 }
- /*其他情况 */
-
+ /*其他情况,直接记录到string_buf里*/
 }
 
 
 
-
+ /*comment condition,处理注释 */
 <comment>{
 \n {
 curr_lineno++;
@@ -238,6 +245,7 @@ if(comment_type==1)
 BEGIN(INITIAL);
 }
 }
+ /*换行符在注释开始标志不同时有不同的处理方式 */
 <<EOF>> {
 if(comment_type==1)
 BEGIN(INITIAL);
@@ -247,13 +255,13 @@ yylval.error_msg="EOF in comment";
 BEGIN(INITIAL);
 return ERROR;
 }
-
 }
+ /*对eof也是有不同的处理方式,在--开头时可以是终结符 */
 
 "(*" {
 num++;
 }
-
+ /*在注释里面再遇见(*的话,也要记录下来,所有的(*都被匹配注释才算结束 */
 "*)" {
 num--;
 if(comment_type==0)
@@ -261,12 +269,10 @@ if(comment_type==0)
 {BEGIN(INITIAL);}
 }
 }
-
+ /*遇见*)则匹配一个(*,都匹配掉则注释结束 */
 . {}
-
-
+ /*其他非特殊字符直接跳过 */
 }
-
 
  /*
   * Define regular expressions for the tokens of COOL here. Make sure, you

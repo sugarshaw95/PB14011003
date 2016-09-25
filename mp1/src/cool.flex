@@ -98,7 +98,7 @@ digit       [0-9]
  /*INITIAL condition */
 <INITIAL>{
 \" {string_buf_ptr=string_buf;str_error_type=0;BEGIN(str);}
-  /* if string */
+  /* if string,v1.01修改的这里,之前忘了把str_error_type改回0*/
 
 "*)"   {yylval.error_msg="Unmatched *)";return ERROR;}
   /* if *) ,error */
@@ -191,7 +191,7 @@ case 2:  yylval.error_msg="String constant too long"; return ERROR; break;
 
 \\\n {curr_lineno++;*string_buf_ptr++='\n';}
 
-
+ /*对应转义的换行符情况,在v1.1中fix,原来有Bug */ 
           
 \n {
 curr_lineno++;

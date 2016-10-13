@@ -85,10 +85,10 @@ true t(?i:rue)
 darrow =>  
 assign <-
 LE <=
-signs "+"|"-"|"-"|"*"|"="|"<"|"."|"~"|","|";"|":"|"("|")"|"@"|"{"|"}" 
+signs "+"|"/"|"-"|"*"|"="|"<"|"."|"~"|","|";"|":"|"("|")"|"@"|"{"|"}" 
 int  [0-9]+
-typid [A-Z][a-zA-Z_]*
-objid [a-z][a-zA-Z_]*
+typid [A-Z][a-zA-Z0-9_]*
+objid [a-z][a-zA-Z0-9_]*
 digit       [0-9]
 
 %%
@@ -146,8 +146,8 @@ return BOOL_CONST;
  /*white space&count lines */
 
 {int} {
-int n=atoi(yytext);
-yylval.symbol=inttable.add_int(n);
+
+yylval.symbol=inttable.add_string(yytext);
 return INT_CONST;
 }
 

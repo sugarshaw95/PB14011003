@@ -60,6 +60,7 @@ class Main inherits IO {
 
              }
 		
+		
             };
 
             func(n:Int) : Int {

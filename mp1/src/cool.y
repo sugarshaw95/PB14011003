@@ -105,9 +105,9 @@ extern int VERBOSE_ERRORS;
 %type <formal> formal
 %type <formals> formal_list
 %type <expression> expr
-%type <expression> let_sub /*let diguizi lei*/
-%type <expressions> expr_list_dispatch
-%type <expressions> expr_list_block
+%type <expression> let_sub /*写let表达式用到的新非终结符*/
+%type <expressions> expr_list_dispatch /*dispatch中的exprlist */
+%type <expressions> expr_list_block /*block中的exprlist */
 /* Precedence declarations go here. */
 %nonassoc IN
 %right ASSIGN
@@ -152,6 +152,7 @@ dummy_feature_list:        /* empty */
         | dummy_feature_list method
                 { $$ = append_Features($1,single_Features($2)); }
         ;
+/*feature_list可能由attr或者method组成 */
 attr : OBJECTID ':' TYPEID ';'
                 { $$=attr($1,$3,no_expr()); }
         | OBJECTID ':' TYPEID ASSIGN expr ';'
@@ -173,6 +174,7 @@ branch_list : branch
         | branch_list branch
                 { $$=append_Cases($1,single_Cases($2)); }
         ;
+/*branch_list不能为空 */
 formal : OBJECTID ':' TYPEID
                 { $$=formal($1,$3); }
         ;
@@ -183,7 +185,7 @@ formal_list : formal_list ',' formal
         |   formal
                 { $$=single_Formals($1); }
         ;
-
+/*这里要注意一个的情况要单独写一个生成式 */
 expr_list_dispatch :
                 { $$=nil_Expressions(); }
         | expr 
@@ -191,6 +193,7 @@ expr_list_dispatch :
         | expr_list_dispatch ',' expr
                 { $$=append_Expressions($1,single_Expressions($3)); }
         ;
+/*同理,一个单独处理 */
 expr_list_block : expr ';'
                 { $$=single_Expressions($1); }
         | expr_list_block expr ';'
@@ -205,24 +208,23 @@ expr :  OBJECTID ASSIGN expr
                 { $$=dispatch($1,$3,$5); }
         | OBJECTID '(' expr_list_dispatch ')'
                 { $$=dispatch(object(idtable.add_string("self")),$1,$3); } /* 3 kinds of dispatch */
-        | IF expr THEN expr ELSE expr FI
+        | IF expr THEN expr ELSE expr FI  // if else then
                 { $$=cond($2,$4,$6); }
-        | WHILE expr LOOP expr POOL
+        | WHILE expr LOOP expr POOL //循环
                 { $$=loop($2,$4); }
-        | '{' expr_list_block '}'
+        | '{' expr_list_block '}' //block
                 { $$=block($2); }
-        | LET OBJECTID ':' TYPEID ASSIGN expr IN expr
+        | LET OBJECTID ':' TYPEID ASSIGN expr IN expr 
                 { $$=let($2,$4,$6,$8); }
-                /* leave out let */
         | LET OBJECTID ':' TYPEID  IN expr
                 { $$=let($2,$4,no_expr(),$6); }
         | LET OBJECTID ':' TYPEID ASSIGN expr ',' let_sub
                 { $$=let($2,$4,$6,$8); }
         | LET OBJECTID ':' TYPEID ',' let_sub
-                { $$=let($2,$4,no_expr(),$6); }  /*let, di gui */
-        | CASE expr OF branch_list ESAC
+                { $$=let($2,$4,no_expr(),$6); }  /*let,递归表示 */
+        | CASE expr OF branch_list ESAC //case语句
                 { $$=typcase($2,$4); }
-        | NEW TYPEID
+        | NEW TYPEID  /*下面全都是简单expr */
                 { $$=new_($2); }
         | ISVOID expr
                 { $$=isvoid($2); }
@@ -265,6 +267,8 @@ let_sub : OBJECTID ':' TYPEID ASSIGN expr ',' let_sub
         | OBJECTID ':' TYPEID IN expr
                 { $$=let($1,$3,no_expr(),$5); }
         ;
+/*表示let用到的新非终结符 */
+
 /* end of grammar */
 %%
 

@@ -88,7 +88,8 @@ a+b*c:首先a作为LHS,b作为RHS,后面的*优先级高于前面的+,故递归�
 
 Q6:解释 Error、ErrorP 的作用，举例说明它们在语法分析中的应用。
 
-答:这两个函数显然是用于parser的错误处理的,它们通过返回nullptr并打印错误信息来提示并处理错误.
+答:这两个函数显然是用于parser的错误处理的,它们通过返回nullptr并打印错误信息来提示并处理错误.区别在于Error是ExprAST类型,用于ExprAST报错,
+ErrorP则是PrototypeAST类型,用于PrototypeAST,并直接调用了Error.
 举例:对parenexpr型expr的分析函数就是一个很好的例子,如下:
 /// parenexpr ::= '(' expression ')'
 static std::unique_ptr<ExprAST> ParseParenExpr() {

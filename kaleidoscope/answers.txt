@@ -1,0 +1,103 @@
+                                             词法分析
+gettok()是一个int型函数,其返回值代表token的类型.首先用enum定义了token的类型,共有eof,def,extern,identifier,number,还有‘unknown’ character(例如"+")这6种情况.前五种分别用int -1到-5的值来表示,'unknown' character则直接返回它的ASCII码值.其中eof代表是文件终结符,def,extern属于关键词,identifier和number则分别代表标识符(变量名)和数字值,对于这两种情况,还需要返回token的语义值,即identifier或number的内容. 
+这里采用的实现方式是利用全局变量,定义了两个全局变量:
+std::string类型的IdentifierStr,存储identifier的语义值. double型的NumVal,存储number的语义值.
+当需要用到变量名或数字值时,直接引用这两个全局变量即可.
+
+gettok()的具体实现如下:
+用getchar()读取输入中字符,用一个int型变量LastChar保存"the last character read, but not processed".
+并利用isspace()函数跳过所有空格.之后正式开始分析.
+
+对id,def,extern三种情况的分析:
+用isalpha判断lastchar是不是字母,如果是字母说明遇到了一个identifier或者def或者extern,接下来用一个while循环把这个identifier所有的字符存到全局变量IdentifierStr里,然后判断一下IdentifierStr是不是def或extern，如果是则返回tok_def或tok_extern,不是则说明是identifier,则返回tok_identifier.
+
+对number的分析:
+判断lastchar是否属于digit或'.',是则说明是一个digit,新建一个std::string，名为NumStr,用来存储这个num(string形式),之后再利用strtod函数把NumStr转化为double类型赋值给NumVal.
+
+对注释的处理:
+注释是以'#'开头,遇到EOF或\n或\r结束.故只要遇到#,就吃掉它后面的字符,一直跳到这一行结束,然后如果不是因EOF终结,则再次调用gettok()返回下一个token
+
+对EOF和unknown character:
+对EOF直接判断是不是EOF,是就返回tok_eof.如果不是,说明该字符属于unknown character,直接把其作为一个int返回其ASCII码值即可.
+
+
+                                            语法分析和AST的构建
+Q1:解释 ExprAST 里的 virtual 的作用，在继承时的原理（解释 vtable).virtual 在 MP1 的 support code 里面也出现了. 这个问题是希望大家理解 C++ 的继承.
+
+答:virtual的作用在于通过把函数定义为虚函数来实现多态,这样能够允许使用基类的指针来调用派生类的函数.
+多态是C++的一个重要特性.　虚函数的实现是利用virtual table(vtbl)和vptr指针.对于有虚函数存在的类,编译器为每个类保存一个vtbl,这个vtbl里保存的就是这个类的虚函数的地址.同时,对每一个对象实例,有一个附加的成员vptr,是一个指向vtbl的指针.根据对象此时对应的类,vptr会指向相应的vtbl.例如有父类A和派生类B,一个A*对象,当它指向一个A类时,它的vptr就指向A的vtbl,指向B类时,就会指向B的vtbl.调用虚函数时,先根据对象的vptr找到对应的vtbl,再利用vtbl找到所要调用的函数即可.
+
+
+   
+Q2:解释代码里的 <std::unique_ptr> 和为什么要使用它？
+答:std::unique_ptr是C++11标准里新增的一个模板类,通过重载*和->拥有指针的行为,它和一般指针的区别是唯一(unique)地指向所拥有的对象,同一时刻只能有一个unique_ptr指向指定对象.其离开作用域时,会将指向对象销毁,可用release方法释放所有权,move方法转移所有权(原指针转移后变成空指针).同时它也具有和auto_ptr相同的智能特性,所以不必担心内存管理问题.这里使用unique_ptr的目的主要是为了使每个特定的ExprAST只允许有一个指针,这样节省空间,也方便管理.
+
+
+
+
+Q3:阅读 src/toy.cpp 中的 MainLoop 及其调用的函数. 阅读 HandleDefinition 和 HandleTopLevelExpression ，忽略 Codegen 部分，说明两者对应的 AST 结构.
+
+答:
+HandleDefinition对应的是一个FunctionAST,是由分析时调用ParsePrototype得到的PrototypeAST型的Proto和调用ParseExpression得到的ExprAST型的body作为两个数据成员构建而成.
+HandleTopLevelExpression对应的是也是一个FunctionAST,但不同点是,它的数据成员只有body是调用ParseExpression得到的,Proto则是直接构建了一个name为"",没有参数的PrototypeAST作为数据成员.因为此时对应的操作是为该上层expr创建一个匿名无参数的function.
+
+
+
+
+
+
+Q4:Kaleidoscope 如何在 Lexer 和 Parser 间传递信息？（token、语义值、用什么函数和变量）
+
+答:token的传递是用getNextToken()获得,存在变量CurTok里.语义值则直接通过全局变量IdentifierStr和NumVal来进行传递.
+
+
+
+
+
+
+Q5:Kaleidoscope 如何处理算符优先级（重点解释 ParseBinOpRHS ）？解释a*b*c、a*b+c、a+b*c分别是如何被分析处理的？
+
+答:通过定义一个<char, int>型的map变量,命名为BinopPrecedence,来存储运算符的优先级,用int来表示算符优先级,越大表示优先级越高.并在main函数中给用到的运算符优先级赋值.GetTokPrecedence函数返回CurTok的优先级数值,如果不是运算符则返回-1. 在分析一个binary expr时,它把其看成由运算符分割开的一串primary expr.开始分析时,把运算数看做是一个primary expr,后面跟着一串 [binop,primaryexpr] 对.之后调用ParseBinOpRHS函数来分析它后面的这些[binop,primaryexpr] 对.
+ParseBinOpRHS函数接受一个优先级和一个指向expr已经被分析部分的指针.它接受的优先级表明了"the minimal operator precedence that the function is allowed to eat".函数整体是一个while(1)循环,利用非op的优先级为-1这一特点跳出循环.循环开始,先check　CurTok的优先级是不是过低,如果低于ExprPrec,说明分析结束了.否则的话,记录下(存在int BinOp里)并eat这个算符,分析算符后面的primary expr,把其记为RHS.至此已经分析完一个pair,此时便产生了2义性:
+“(a+b) binop unparsed” or “a + (b binop unparsed)”.我们通过观察下一个pair的运算符和BinOp的优先级关系来决定.如果下一个pair的运算级不比BinOp高,则按“(a+b) binop unparsed”分析,合并当前的LHS和RHS,产生一个binaryExprAST,将其作为新的LHS,结束本次循环开始下一轮分析. 否则,要按“a + (b binop unparsed)”分析，这里通过RHS = ParseBinOpRHS(TokPrec+1, std::move(RHS));递归调用ParseBinOpRHS来完成这样的分析.因为这时我们知道所有运算符优先级比binop高的pair都应该被一起分析并作为RHS返回,所以我们递归调用ParseBinOpRHS,参数设为TokPrec+1保证只有优先级高于binop的才能够分析.
+
+按此分析方式,
+a*b*c:首先a作为LHS,b作为RHS,后面的*优先级不高于前面的*,生成一个AST(a*b),作为新的LHS,c作为RHS,再生成一个AST((a*b)*c).
+a*b+c:首先a作为LHS,b作为RHS,后面的+优先级不高于前面的*,生成一个AST(a*b),作为新的LHS,c作为RHS,再生成一个AST((a*b)+c).
+a+b*c:首先a作为LHS,b作为RHS,后面的*优先级高于前面的+,故递归调用ParseBinOpRHS,这个ParseBinOpRHS生成一个AST(b*c),返回,作为原过程中的RHS,再生成最终的AST(a+(b*c)).
+
+
+
+Q6:解释 Error、ErrorP 的作用，举例说明它们在语法分析中的应用。
+
+答:这两个函数显然是用于parser的错误处理的,它们通过返回nullptr并打印错误信息来提示并处理错误.
+举例:对parenexpr型expr的分析函数就是一个很好的例子,如下:
+/// parenexpr ::= '(' expression ')'
+static std::unique_ptr<ExprAST> ParseParenExpr() {
+  getNextToken(); // eat (.
+  auto V = ParseExpression();
+  if (!V)
+    return nullptr;
+
+  if (CurTok != ')')
+    return LogError("expected ')'");
+  getNextToken(); // eat ).
+  return V;
+}
+该函数中就用到了Error(似乎在教程里是叫LogError和LogErrorP,只是名字不同).
+可以看到,假如在分析过程中,吃掉(,得到中间的expression后,后面没有出现),则说明出现了错误,故用if判断,若curtok不是')',则调用Error,打印错误信息,并返回nullptr,这样通过该函数的返回值即可知道是否出现了错误.
+
+
+
+Q7:Kaleidoscope 不支持声明变量和给变量赋值，那么变量的作用是什么
+
+答:变量的作用在于
+
+
+
+
+
+
+
+
+

@@ -29,4 +29,11 @@ constants(intable),identifiers(idtable)的结构。这样的结构使得对于�
 根据flex和bison书中的内容,bison把规则(产生式)右部最右边记号的优先级赋给规则本身.　按照cool手册的要求.
 let型expr的这条规则优先级应该是最低的,因此可以通过把IN的优先级设为最低来避免这种冲突,至于IN的结合性,事实上并不重要,因为并不会用到它的结合性,可以随便写,这里写的是left.
 
+				MP1.3(第二次提交)
 
+错误恢复:
+对class定义错误的情况作了细分,包括第一个typeid出错,第二个typeid出错,inherits拼写错误,class拼写错误,
+缺少{，缺少},及其他情况,每种情况都单独匹配并printf出了相关提示信息(但是似乎要求不让改输出信息所以提
+交时注释掉了).
+同理,对attr和method的出错情况也做了细分.attr分为:objectid,typeid,:缺失,assign缺失,assign后的expr
+出错. method分为typeid,objectid,expr这三种主要错误和其他错误.

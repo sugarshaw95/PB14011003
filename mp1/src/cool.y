@@ -155,8 +155,8 @@ class  : CLASS TYPEID '{' dummy_feature_list '}'
                 { /*printf("} missing\n");*/ yyerrok;}
         | CLASS TYPEID INHERITS TYPEID error dummy_feature_list '}'
                 { /*printf("{ missing\n");*/ yyerrok;}                  
- 
-                                                                              
+        | CLASS error  '}'
+                { /*printf("{ missing\n");*/ yyerrok;} /*other type*/                                                                              
         ;
 
 /* Feature list may be empty, but no empty features in list. */

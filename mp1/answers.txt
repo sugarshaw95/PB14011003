@@ -38,6 +38,9 @@ let型expr的这条规则优先级应该是最低的,因此可以通过把IN的�
 同理,对attr和method的出错情况也做了细分.attr分为:objectid,typeid,:缺失,assign缺失,assign后的expr
 出错. method分为typeid,objectid,expr,formal_list几种主要错误和其他错误(似乎)括号缺失时有bug？).
 
+注:对于let　in后面的expr　有bug的情况恢复应该是有问题,但是expr种类太多了...没法处理,这个应该不属于
+基本要求？
+
 
 对加减乘除之类缺少操作数的情况做了一下恢复...但是不敢确定是否有bug
 

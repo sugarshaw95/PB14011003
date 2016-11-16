@@ -36,4 +36,9 @@ let型expr的这条规则优先级应该是最低的,因此可以通过把IN的�
 缺少{，缺少},及其他情况,每种情况都单独匹配并printf出了相关提示信息(但是似乎要求不让改输出信息所以提
 交时注释掉了).
 同理,对attr和method的出错情况也做了细分.attr分为:objectid,typeid,:缺失,assign缺失,assign后的expr
-出错. method分为typeid,objectid,expr这三种主要错误和其他错误.
+出错. method分为typeid,objectid,expr,formal_list几种主要错误和其他错误(似乎)括号缺失时有bug？).
+
+
+对加减乘除之类缺少操作数的情况做了一下恢复...但是不敢确定是否有bug
+
+

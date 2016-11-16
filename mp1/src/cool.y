@@ -134,7 +134,6 @@ class_list
                 { $$ = single_Classes($1); }
         | class_list class ';' /* several classes */
                 { $$ = append_Classes($1,single_Classes($2)); }
-
         ;
 
 /* If no parent is specified, the class inherits from the Object class. */
@@ -149,37 +148,40 @@ class  : CLASS TYPEID '{' dummy_feature_list '}'
         | CLASS TYPEID error TYPEID '{' dummy_feature_list '}' 
                 { /*printf("Class error,inherits misspelled!\n ");*/ yyerrok;}
         | CLASS TYPEID INHERITS error '{' dummy_feature_list '}' 
-                { /*printf("Class error,invalid typeid(2nd)!\n");*/ yyerrok;}
+                { /*printf("Class error,invalid typeid(2nd)!\n");*/ yyerrok;yyclearin;}
         | error TYPEID INHERITS TYPEID '{' dummy_feature_list '}' 
                 { /*printf("Class error,class misspelled !\n");*/ yyerrok;}
         | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list error
                 { /*printf("} missing\n");*/ yyerrok;}
         | CLASS TYPEID INHERITS TYPEID error dummy_feature_list '}'
                 { /*printf("{ missing\n");*/ yyerrok;}                  
-        | CLASS error CLASS 
-                { /*printf("Class error,other type\n");*/ yyerrok;}                                                                                
+ 
+                                                                              
         ;
 
 /* Feature list may be empty, but no empty features in list. */
 dummy_feature_list:        /* empty */
                 { $$ = nil_Features(); }
-        | dummy_feature_list attr
+        | dummy_feature_list attr 
                 { $$ = append_Features($1,single_Features($2)); }
-        | dummy_feature_list method
+        | dummy_feature_list method 
                 { $$ = append_Features($1,single_Features($2)); }
+            
 
         ;
 /*feature_list可能由attr或者method组成 */
 attr : OBJECTID ':' TYPEID ';'
                 { $$=attr($1,$3,no_expr()); }
         | OBJECTID ':' TYPEID ASSIGN expr ';'
-                { $$=attr($1,$3,$5); }
+                { $$=attr($1,$3,$5); } 
         | OBJECTID ':' TYPEID ASSIGN error ';'
                 { /*printf("attr error,assign expr error!\n ");*/ yyerrok;}
         | OBJECTID error TYPEID ASSIGN expr ';'
-                { /*printf("attr error, ':' missing!\n ");*/ yyerrok;} 
+                { /*printf("attr error, ':' missing!\n ");*/ yyerrok;}
+        | OBJECTID error TYPEID ';'
+                { /*printf("attr error, ':' missing!\n ");*/ yyerrok;}                 
         | OBJECTID ':' TYPEID error expr ';'
-                { /*printf("attr error,assign missing!\n ");*/ yyerrok;}                               
+                { /*printf("attr error,assign missing!\n ");*/yyerrok;}                                               
         | error ':' TYPEID ASSIGN expr ';'
                 { /*printf("attr error,invalid objectid!\n");*/ yyerrok;}
         | OBJECTID ':' error ASSIGN expr ';'
@@ -189,7 +191,7 @@ attr : OBJECTID ':' TYPEID ';'
         | OBJECTID ':' error ';'
                 { /*printf("attr error,invalid typeid!\n");*/ yyerrok;} 
         | OBJECTID error ';'
-                { /*printf("attr error,other type\n");*/yyerrok;}
+                { /*printf("feature error,other type\n");*/yyerrok;}
 
         ;
 
@@ -199,11 +201,19 @@ method : OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}' ';'
                 { $$=method($1,$3,$6,$8); }
         | OBJECTID '(' formal_list ')' ':' error '{' expr '}' ';'
                 { /*printf("method error,invalid typeid!\n");*/ yyerrok;} 
-        | error '(' formal_list ')' ':' TYPEID '{' expr '}' ';'
-                { /*printf("method error,invalid objectid!\n");*/ yyerrok;}
+        | error  formal_list ')' ':' TYPEID '{' expr '}' ';'
+                { /*printf("method error,invalid objectid!\n");*/yyerrok;}
         | OBJECTID '(' error ')' ':' TYPEID '{' expr '}' ';'
-                { /*printf("method error,expr error!\n");*/ yyerrok;}
-                                      
+                { /*printf("method error,formal_list error!\n");*/ yyerrok;}    
+        | OBJECTID '(' formal_list ')' ':' TYPEID '{' error '}' ';'
+                { /*printf("method error,expr error!\n");*/ yyerrok;} 
+        | OBJECTID '(' formal_list ')' ':' TYPEID error expr '}' ';'
+                { /*printf("method error,{ missing !\n");*/ yyerrok; }
+        | OBJECTID '(' formal_list ')' ':' TYPEID '{' expr error ';'
+                { /*printf("method error,} missing !\n");*/ yyerrok; } 
+        | OBJECTID '(' formal_list ')' error TYPEID '{' expr '}' ';'
+                { /*printf("method error,: missing !\n");*/ yyerrok; }
+                                               
         ;
 
 
@@ -240,7 +250,7 @@ expr_list_block : expr ';'
         | expr_list_block expr ';'
                 { $$=append_Expressions($1,single_Expressions($2)); }
         | error ';'
-                { /*printf("expr in {...} error!\n");*/ yyerrok;} //expr error in {...}
+                { /*printf("expr in {...} error!\n");*/yyerrok;} //expr error in {...}
 
         ;
 
@@ -258,19 +268,15 @@ expr :  OBJECTID ASSIGN expr
                 { $$=loop($2,$4); }
         | '{' expr_list_block '}' //block
                 { $$=block($2); }
-        | LET OBJECTID ':' TYPEID ASSIGN expr IN expr 
-                { $$=let($2,$4,$6,$8); }
-        | LET OBJECTID ':' TYPEID  IN expr
-                { $$=let($2,$4,no_expr(),$6); }
-        | LET OBJECTID ':' TYPEID ASSIGN expr ',' let_sub
-                { $$=let($2,$4,$6,$8); }
-        | LET OBJECTID ':' TYPEID ',' let_sub
-                { $$=let($2,$4,no_expr(),$6); }  /*let,递归表示 */
-        | LET error IN expr
-                { /*printf("let error\n");*/yyerrok;}
+        | LET OBJECTID ':' TYPEID ASSIGN expr let_sub 
+                { $$=let($2,$4,$6,$7); }
+        | LET OBJECTID ':' TYPEID  let_sub
+                { $$=let($2,$4,no_expr(),$5); } /*let,递归表示 let_sub */
+     
         | LET error let_sub
-                { /*printf("let error\n");*/yyerrok;} /*let error */
-        
+                { /*printf("let error\n");*/yyerrok;}
+
+    
         | CASE expr OF branch_list ESAC //case语句
                 { $$=typcase($2,$4); }
         | NEW TYPEID  /*下面全都是简单expr */
@@ -278,13 +284,21 @@ expr :  OBJECTID ASSIGN expr
         | ISVOID expr
                 { $$=isvoid($2); }
         | expr '+' expr 
-                { $$=plus($1,$3); }
+                { $$=plus($1,$3); }                                               
         | expr '-' expr
                 { $$=sub($1,$3); }
         | expr '*' expr
                 { $$=mul($1,$3); }
         | expr '/' expr
                 { $$=divide($1,$3); }
+        | expr '+' error 
+                { yyerrok; }                                               
+        | expr '-' error
+                { yyerrok; }
+        | expr '*' error
+                { yyerrok; }
+        | expr '/' error
+                { yyerrok;}                                
         | '~' expr
                 { $$=neg($2); } 
         | expr '<' expr
@@ -294,9 +308,11 @@ expr :  OBJECTID ASSIGN expr
         | expr '=' expr
                 { $$=eq($1,$3); } 
         | NOT expr
-                { $$=comp($2); } 
+                { $$=comp($2); }               
         | '(' expr ')'
                 { $$=$2; }
+        | '(' error ')'
+                { /*printf("not a expr\n");*/yyerrok; }                
         | OBJECTID
                 { $$=object($1); }
         | INT_CONST
@@ -308,14 +324,14 @@ expr :  OBJECTID ASSIGN expr
                                                                                                                                                                          
         ;
 
-let_sub : OBJECTID ':' TYPEID ASSIGN expr ',' let_sub
-                { $$=let($1,$3,$5,$7); }
-        | OBJECTID ':' TYPEID ',' let_sub
-                { $$=let($1,$3,no_expr(),$5); } 
-        | OBJECTID ':' TYPEID ASSIGN expr IN expr
-                { $$=let($1,$3,$5,$7); }
-        | OBJECTID ':' TYPEID IN expr
-                { $$=let($1,$3,no_expr(),$5); }
+let_sub : ',' OBJECTID ':' TYPEID ASSIGN expr  let_sub
+                { $$=let($2,$4,$6,$7); }
+        | ',' OBJECTID ':' TYPEID  let_sub
+                { $$=let($2,$4,no_expr(),$5); } 
+        |  IN expr
+                { $$=$2; }
+ 
+
         ;
 /*表示let用到的新非终结符 */
 

@@ -9,14 +9,27 @@
 
 (* no error *)
 class A {
+fun():Int {
+
+let x:int <- 1,m:Int <- 2 in
+
+};
+
+
 };
 
 (* error:  b is not a type identifier *)
 Class b inherits A {
+    F : Int<-1;
+
 };
 
 (* error:  a is not a type identifier *)
-Class C inherits a {
+Class C inherits A {
+fun():Int {
+1+ --+号缺失
+};
+
 };
 
 (* error:  keyword inherits is misspelled *)

@@ -1,0 +1,8 @@
+
+
+
+第一行 int x=3, y=4不会产生 symbolic values x的memregion bind 到concreteint 3  y bind到4.
+int *p =&x; 会产生$0表示　&x p的memreigon bind 到 $0
+p+1:$1 *(p+1):$2 
+ 关系:　P的memregion bind的是$0,　$1表示的是p+1,相当于是$0与concrete number 1相加的结果.
+而$2表示的是p+1指向单元的内容,即$1指向单元内容. 

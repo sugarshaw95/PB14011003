@@ -152,14 +152,14 @@
   {
 
 
-  ```C
+```C
   FILE *p=open("foo");
   FILE *f=open("bar");
   fprintf(p,"hi!");
   f1(f);
   f2(f);
   return 0;
-  ```
+```
 
   }
 
@@ -209,11 +209,11 @@
     SOURCE Checkers.td
     TARGET ClangSACheckers)
 
-  顾名思义,该函数的作用是生成clang的checker table.这个table最终保存在文件Checkers.inc中(在build中可以找到).以Checkers.td为source,头文件ClangSACheckers为target,先由source生成target头文件,再利用头文件生成最终的Checkers.inc.
+  顾名思义,该函数的作用是生成clang的checker table.这个table最终保存在文件Checkers.inc中(在build中可以找到).以Checkers.td为source,ClangSACheckers作为target.其中的路径参数指明了编译后输出的文件位置.
 
-* 这类文件的作用在于在其中保存check table的信息,所有的checker都在其中定义(有一个专用的tablegen语言). 它是利用llvm提供的一个tablegen工具,把.td文件作为source,在CMakeLists.txt的指示下来生成C++头文件或源文件的.
+* 这类文件的作用在于在其中保存check table的信息,所有的checker都集中在其中定义(有一个专用的tablegen语言). 它是利用llvm提供的一个tablegen工具,把.td文件作为source,在CMakeLists.txt的指示下(事实上也可以不用CMake,CMake也是调用的tablegen工具)来生成C++头文件或源文件的.
 
-  这种机制的好处在于批量处理,容易扩展,要加新的checker只要在.td中加一些相应的内容,cmakelists.txt等其他文件都不需要修改.
+  这种机制的好处在于批量处理,容易扩展,要加新的checker只要在.td文件中加一些相应的内容,不必做重复的无用工作.cmakelists.txt等其他文件都不需要修改.
 
 
 

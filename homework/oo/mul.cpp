@@ -1,10 +1,11 @@
     #include<iostream>  
-    using namespace std;  
+    using namespace std; 
+    //多重继承 
  template<typename dst_type,typename src_type>
 dst_type pointer_cast(src_type src)
 {
     return *static_cast<dst_type*>(static_cast<void*>(&src));
-};     
+};  //此为取地址方法   
     class A  
     {  
     public:  

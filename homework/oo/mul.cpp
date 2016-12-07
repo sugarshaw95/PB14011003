@@ -1,4 +1,5 @@
-    #include<iostream>  
+    #include<iostream> 
+     
     using namespace std; 
     //多重继承 
  template<typename dst_type,typename src_type>
@@ -68,7 +69,7 @@ dst_type pointer_cast(src_type src)
                 void* p7 = pointer_cast<void*>(&d1.C::x); 
         void* p8 = pointer_cast<void*>(&d1.z);
         void* p9 = pointer_cast<void*>(&d1.m);
- 
+		cout<<"d1的B::x，C::x分别为:"<<d1.B::x<<" "<<d1.C::x<<endl; //访问数据成员
                 cout<<"各成员函数地址为:"<<endl;
         cout<<p1<<endl<<p2<<endl<<p3<<endl<<p4<<endl;
         cout<<"B::x,y,C::x,z,m地址依次为:"<<endl; 

@@ -73,6 +73,7 @@
         
         cout<<"各成员函数地址为:"<<endl;
         cout<<p1<<endl<<p2<<endl<<p3<<endl<<p4<<endl;
+        cout<<"d1的x为:"<<d1.x<<endl;
         cout<<"B::x,y,C::x,z,m地址依次为:"<<endl; 
         cout<<p5<<endl<<p6<<endl<<p7<<endl<<p8<<endl<<p9<<endl; 
         return 0;  

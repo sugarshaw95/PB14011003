@@ -205,7 +205,7 @@ public:
 		int get_ok() {return ok_count;}
 	void set_ok(int x) {ok_count=x;}
 		int get_block() {return block_count;}
-	void set_block(int x) {block_count=x;} //自己增加的函数,用于处理cond时恢复env
+	void set_block(int x) {block_count=x;} //自己增加的函数,用于处理cond时恢复env.
     
 	// INCOMPLETE FUNCTIONS
 

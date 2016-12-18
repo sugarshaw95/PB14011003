@@ -905,24 +905,19 @@ operand cond_class::code(CgenEnvironment *env)
 	// ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING 
 	// MORE MEANINGFUL
 	ValuePrinter vp=ValuePrinter(*(env->cur_stream));
-	std::ostream *o_s=env->cur_stream;
-	std::ofstream tmp;
-	int o_tmp=env->get_tmp();
-	int o_ok=env->get_ok();
-	int o_block=env->get_block();
-	env->cur_stream=&(tmp);
-	
-	//cout<<"wocao!"<<endl;
 	operand judge,t_op,f_op,retval;
-	t_op=then_exp->code(env);  //try the whole expr's type by running then_exp->code(env) with env's ostream changed
-	env->cur_stream=o_s;
-	env->set_tmp(o_tmp);
-	env->set_ok(o_ok);
-	env->set_block(o_block); //set env back to the original state.这里由于只有let_class中途会改变symboltable,且其代码生成后在返回前会kill_local,所以symboltable在运行得到t_op后不会变,不必恢复
-	
-	
-	
-	op_type type=t_op.get_type(); 
+	op_type type;	
+	Symbol then_type=then_exp->get_type();
+	Symbol else_type=else_exp->get_type();
+	if(then_type == Int && else_type == Int)
+	type=op_type(INT32);
+	else if(then_type == Bool && else_type == Bool)
+	type=op_type(INT1);
+	else
+	{
+	cerr<<"if_exp and else_exp type does not match!"<<endl;
+	abort();
+	} //get the whole expr's type,if not match,abort	 
 	retval=operand(type.get_ptr_type(),env->new_name());
 	vp.alloca_mem(*(env->cur_stream),type,retval);
 	

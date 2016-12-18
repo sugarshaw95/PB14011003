@@ -74,7 +74,52 @@
 ## MP2
 
 - 总述
-- 遇到的问题&解决对策
+
+  mp2要完成的任务是利用mp1中parser生成的AST,为cool的一个简单语言子集(仅能表示仅由单个名为Main.main()的无参函数组成的 Cool 程序,需要实现的类只有Int和Bool)实现一个llvm的中间代码(IR)的生成器,.
+
 - 核心问题&设计&实现
+
+  这里的核心问题是:理解代码生成器的实现方法(或者说是机制).本次实验的实现方式是:将代码生成分为两遍, 即所提供的框架代码中采用的方法. 第一遍确定每个类的对象内存布局, 即用哪些 LLVM 数据类型来创建每个类、并为程序中出现的所有常量生成 LLVM 常量. 第二遍利用第一遍得到的信息递归地遍历程序中的每种结构特征，为每个表达式生成 LLVM 代码. 为了理解这个过程是如何进行的,需要详细阅读框架代码并理解,另外mp2的README文件也对该过程有一个描述,阅读该文件对理解这个也有帮助.因为框架代码的代码量就已经不小,所以这是一个比较大的工作量.除了阅读cgen.cc,cgen.h等外,生成IR时还要用到valueprinter,operand这两个库,所以也要阅读理解这两个库的用法.总的来说,最核心的问题就是阅读理解框架代码和所使用的库的用法.一旦理解了框架之后,上手写代码就比较快了.
+
+  设计上,按照实验说明,mp2要填充的代码主要是在second pass(事实上我甚至不确定first pass对mp2需不需要加代码,因为似乎按照README的说法first pass要layout features,但mp2要处理的语言子集中没有feature...　反正我最后并没有对first pass调用的函数加代码,似乎也能成功生成和ref相同的IR代码).
+
+  根据框架代码,second pass调用CgenTable的函数code_module().code_module中首先找到Main这个类对应的CgenNode,然后对其调用codeGenMainmain(),生成Main的方法Main_main的代码,之后再调用code_main(),定义全局变量字符串,再定义main函数,该函数调用printf打印Main_main的返回值输出到屏幕.
+
+  对于codeGenMainmain(),它生成代码的过程是这样的,首先设置环境CgenEnvirnoment,这个类保存了当前的环境信息,主要有一些临时变量和标签的计数值,以及一个Symbol到operand的表Symbol table,用来为Object寻找其在内存中对应的位置.　之后,得到Main类的main方法对应的method节点,调用它的code方法,以生成的环境为参数,来生成Main_main的代码.
+
+  对于code方法的说明:
+
+  cool-tree.handcode中为各种AST节点类都定义了虚函数code,参数是一个CgenEnvirnoment,用来生成这个节点对应的代码.本次实验中涉及到的只是method节点的code方法和各种expr节点的code方法. method的code方法是一个void函数,而各种expr因为要有对应的值,所以其code方法都是operand型,但在执行过程中也要生成对应的IR代码.
+
+  综上,我们在cgen.cc中要填充的函数主要有:
+
+  codeGenMainmain(),code_main(),以及method节点和各种expr节点的code方法.其中最重要的是各种AST节点的code方法的填充l.因为事实上main函数的代码是固定的,比较容易写,codeGenMainmain()本身也不生成代码,只是设置一下环境,重点都在于各种AST节点的code方法,归根结底代码主要是通过这些方法生成的.
+
+  实现上,首先解决的是比较简单的code_main(),因为它的内容是确定的.在充分理解ValuePrinter的用法后,很容易就能写出其对应的代码.之后是按照实验说明上的实验攻略给的策略依次实现的:
+
+  先填充method的code方法,这里首先根据method_class包含的成员信息,得到对应的类名和方法名,就知道函数的整体名字,再得到参数的类型(这里先没有写相关代码,因为Main_main确定是无参的,暂时不用写),就得到define这个函数需要的全部信息.之后首先define这个函数,然后设置一个entry,再设置abort函数的入口以处理异常,最后结束定义即可.
+
+  之后处理各种expr,首先是Int_const和bool_const,这两种情况最简单,并不需要生成代码,只需要构造对应的operand(int_value或者bool_value),返回即可.
+
+  之后为了方便测试,实现block. block的code方法是把block中的所有expr的code方法全部执行一遍,最后返回的是最后一个expr的值.
+
+  之后实现各种一元二元运算型expr,比如加减乘除,<,~,not等.这些expr对应的代码也都比较简单,一般就是一两条指令,比如+就是add,取反就是0减操作数等.
+
+  然后是object,对应的指令是从env的symboltable中根据节点中包含的名字找到这个obj在内存中对应的位置,然后load.
+
+  然后是赋值语句,对应的操作是先执行RHS的code方法得到右操作数,再从env中找到LHS对应的operand,最后生成一条store指令.
+
+  然后按照实验指南实现let,这里let比较复杂,是递归实现的,首先对变量定义赋值的操作是先为变量alloca一个内存位置,然后和赋值语句类似进行赋值,其中注意如果变量只定义没有指定初始值,要有一个默认的初始值.之后就执行body的code方法,最后的值是body的返回值.另外注意let对 env有操作,定义变量时,要把这个变量的名字和为其申请的内存位置关系加到env中,使用add_local方法,最后退出方法时,因为是局部变量,又要kill_local.
+
+  最后生成loop和cond.cond表达式的类型与if_exp和else_exp的类型一致,首先执行判断条件expr,用有条件br指令判断条件是否成立,之后分别设置true label和false label,true就跳到true_label执行对应expr,false同理.最后都跳转到end_label. 返回值就是两个expr之一.   loop的原理与cond类似,执行code方法得到cond的值,标记判断的位置为loop.n,判断,true就跳转到true.n,执行expr,然后无条件跳转回loop.n. false则跳转到false.n,继续顺序执行下面的代码.最后的返回值根据实验说明就是整数0,与表达式内容无关.
+
+  最后的最后是错误检验,这里只是除0检验,所以只是对div表达式,用icmp把除数和0比较,相等就跳转到abort,不等跳转到ok.n继续执行.
+
+- 遇到的问题&解决对策
+
+  这里遇到的一个值得一提的问题是处理cond表达式时如何在不生成代码的情况下得到if_exp和else_exp的类型.起初我并不没有发现expression类也有一个get_type方法可以返回Symbol型的类型,所以当时为这个问题想了好久,最后采取的方法是把env的输出流换成一个临时流,之后执行一次code方法来获得类型.为此,还要能够让env恢复以前的状态,所以还定义了几个方法用来恢复状态.后来测试时偶然发现了ref是用expression的get_type方法进行判断,就改成了用这种方法判断,并增加了错误检查,如果前后表达式类型不一致,则输出错误提示信息并abort.
+
 - 参考文献
+
+  LLVM IR官方文档,另外基本就是实验说明和所给的框架代码了,并没有参考太多外部的东西...
 
